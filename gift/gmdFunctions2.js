@@ -557,4 +557,4 @@ const GiftedAntiDelete = async (Gifted, deletedMsg, key, deleter, botOwnerJid) =
     }
 };
 
-module.exports = { logger, GiftedAntiLink, GiftedListeners, GiftedAutoBio, GiftedChatBot, GiftedAntiDelete, GiftedAnticall, GiftedPresence };
+module.exports = { logger, GiftedAntiLink, GiftedAutoBio, GiftedChatBot, GiftedAntiDelete, GiftedAnticall, GiftedPresence };
