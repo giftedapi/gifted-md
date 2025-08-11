@@ -1,7 +1,4 @@
-global.newsletterName = "GIFTED TECH";
-global.newsletterJid = "120363408839929349@newsletter";
-global.botPic = "https://files.giftedtech.web.id/file/gifted-md.jpg";
-global.newsletterUrl = "https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y";
+const config = require("../config");
 
 const createContext = (userJid, options = {}) => ({
     contextInfo: {
@@ -9,20 +6,20 @@ const createContext = (userJid, options = {}) => ({
         forwardingScore: 5,
         isForwarded: true,
         businessMessageForwardInfo: {
-            businessOwnerJid: global.newsletterJid, 
+            businessOwnerJid: config.NEWSLETTER_JID, 
         },
         forwardedNewsletterMessageInfo: {
-            newsletterJid: global.newsletterJid,
-            newsletterName: options.newsletterName || global.newsletterName,
+            newsletterJid: config.NEWSLETTER_JID,
+            newsletterName: config.BOT_NAME,
             serverMessageId: Math.floor(100000 + Math.random() * 900000)
         },
         externalAdReply: {
-            title: options.title || global.newsletterName,
+            title: options.title || config.BOT_NAME,
             body: options.body || "Powered by GiftedTech",
-            thumbnailUrl: options.thumbnail || global.botPic,
+            thumbnailUrl: config.BOT_PIC,
             mediaType: 1,
-            mediaUrl: options.mediaUrl || undefined,
-            sourceUrl: options.sourceUrl || global.newsletterUrl, 
+            mediaUrl: options.mediaUrl || config.BOT_PIC,
+            sourceUrl: options.sourceUrl || config.NEWSLETTER_URL, 
             showAdAttribution: true,
             renderLargerThumbnail: false 
         }
@@ -30,25 +27,21 @@ const createContext = (userJid, options = {}) => ({
 });
 
 
-const thumbnails = [
-"https://files.giftedtech.web.id/file/gifted-md.jpg",
-"https://files.giftedtech.web.id/image/mygifted.png"
-  ];
-const DEFAULT_THUMBNAIL = thumbnails[Math.floor(Math.random() * thumbnails.length)];
+const DEFAULT_THUMBNAIL = config.BOT_PIC;
 const createContext2 = (userJid, options = {}) => ({
     contextInfo: {
         mentionedJid: [userJid],
         forwardingScore: 5,
         isForwarded: true,
         forwardedNewsletterMessageInfo: {
-            newsletterJid: global.newsletterJid,
-            newsletterName: global.newsletterName,
+            newsletterJid: config.NEWSLETTER_JID,
+            newsletterName: config.BOT_NAME,
             serverMessageId: Math.floor(100000 + Math.random() * 900000)
         },
         externalAdReply: {
-            title: options.title || global.newsletterName,
+            title: options.title || config.BOT_NAME,
             body: options.body || "Powered by Gifted Tech",
-            thumbnailUrl: options.thumbnail || global.botPic,
+            thumbnailUrl: config.BOT_PIC,
             mediaType: 1,
             showAdAttribution: true,
             renderLargerThumbnail: true 

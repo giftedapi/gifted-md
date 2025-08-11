@@ -1,12 +1,6 @@
-const { gmd, config, commands, monospace, formatBytes } = require("../gift"),
+const { gmd, commands, monospace, formatBytes } = require("../gift"),
       fs = require('fs'), 
       axios = require('axios'),
-      { BOT_PIC: botPic,
-      TIME_ZONE: tz,
-      PREFIX: prefix,
-      VERSION: version,
-      BOT_NAME: botName, 
-      MODE: botMode } = config,
       BOT_START_TIME = Date.now(),
       { totalmem: totalMemoryBytes, 
       freemem: freeMemoryBytes } = require('os'),
@@ -16,37 +10,6 @@ const { gmd, config, commands, monospace, formatBytes } = require("../gift"),
       { downloadContentFromMessage } = require('gifted-baileys'),
       ram = `${formatBytes(freeMemoryBytes)}/${formatBytes(totalMemoryBytes)}`;
 
-gmd({ 
-  pattern: "meta",
-  react: "⚡",
-  category: "general",
-  description: "Send message to Meta AI",
-}, async (from, Gifted, conText) => {
-  const { mek, react, reply, q } = conText;
-
-  if (!q) {
-    await react("❌");
-    return reply("Please provide some text");
-  }
-
-  try {
-
-    await Gifted.sendMessage(from, {
-      text: `@867051314767696 ${q}`,
-      mentions: ['867051314767696@bot'],
-      contextInfo: {
-        mentionedJid: ['867051314767696@bot'],
-        forwardingScore: 0,
-        isForwarded: false
-      }
-    }, { quoted: mek });
-
-    await react("✅");
-  } catch (error) {
-    await react("❌");
-    return reply(`Error: ${error.message}`);
-  }
-});
 
 
 gmd({ 
@@ -56,7 +19,7 @@ gmd({
   category: "general",
   description: "Fetch bot main menu",
 }, async (from, Gifted, conText) => {
-      const { mek, sender, react, pushName } = conText;
+      const { mek, sender, react, pushName, botPic, botMode, botVersion, botName, botFooter, timeZone, botPrefix, newsletterJid } = conText;
     function formatUptime(seconds) {
             const days = Math.floor(seconds / (24 * 60 * 60));
             seconds %= 24 * 60 * 60;
@@ -69,14 +32,14 @@ gmd({
 
         const now = new Date();
         const date = new Intl.DateTimeFormat('en-GB', {
-            timeZone: tz,
+            timeZone: timeZone,
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
         }).format(now);
 
         const time = new Intl.DateTimeFormat('en-GB', {
-            timeZone: tz,
+            timeZone: timeZone,
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
@@ -95,22 +58,22 @@ gmd({
         }, {});
       let header = `╭══〘〘 *${monospace(botName)}* 〙〙═⊷
 ┃❍ *Mᴏᴅᴇ:*  ${monospace(botMode)}
-┃❍ *Pʀᴇғɪx:*  [ ${monospace(prefix)} ]
+┃❍ *Pʀᴇғɪx:*  [ ${monospace(botPrefix)} ]
 ┃❍ *Usᴇʀ:*  ${monospace(pushName)}
 ┃❍ *Pʟᴜɢɪɴs:*  ${monospace(totalCommands.toString())}
-┃❍ *Vᴇʀsɪᴏɴ:*  ${monospace(version)}
+┃❍ *Vᴇʀsɪᴏɴ:*  ${monospace(botVersion)}
 ┃❍ *Uᴘᴛɪᴍᴇ:*  ${monospace(uptime)}
 ┃❍ *Tɪᴍᴇ Nᴏᴡ:*  ${monospace(time)}
 ┃❍ *Dᴀᴛᴇ Tᴏᴅᴀʏ:*  ${monospace(date)}
-┃❍ *Tɪᴍᴇ Zᴏɴᴇ:*  ${monospace(tz)}
+┃❍ *Tɪᴍᴇ Zᴏɴᴇ:*  ${monospace(timeZone)}
 ┃❍ *Sᴇʀᴠᴇʀ Rᴀᴍ:*  ${monospace(ram)}
 ╰═════════════════⊷\n${readmore}\n`;
 
         const formatCategory = (category, gmds) => {
             const title = `╭━━━━❮ *${monospace(category.toUpperCase())}* ❯━⊷ \n`;
-            const body = gmds.map(gmd => `┃◇ ${monospace(prefix + gmd)}`).join('\n');
+            const body = gmds.map(gmd => `┃◇ ${monospace(botPrefix + gmd)}`).join('\n');
             const footer = `╰━━━━━━━━━━━━━━━━━⊷\n`;
-            return `${title}${body}\n${footer}`;
+            return `${title}${body}\n${footer}\n`;
         };
 
         let menu = header;
@@ -120,13 +83,13 @@ gmd({
         
     const giftedMess = {
         image: { url: botPic },
-        caption: menu.trim(),
+        caption: `${menu.trim()}\n\n> *${botFooter}*`,
         contextInfo: {
           mentionedJid: [sender],
           forwardingScore: 5,
           isForwarded: true,
           forwardedNewsletterMessageInfo: {
-            newsletterJid: "120363408839929349@newsletter",
+            newsletterJid: newsletterJid,
             newsletterName: botName,
             serverMessageId: 143
           }
@@ -145,7 +108,7 @@ gmd({
   category: "owner",
   description: "Displays the full raw quoted message using Baileys structure.",
 }, async (from, Gifted, conText) => {
-  const { mek, reply, react, quotedMsg, isSuperUser } = conText;
+  const { mek, reply, react, quotedMsg, isSuperUser, botName, newsletterJid } = conText;
   
   if (!isSuperUser) {
     return reply(`Owner Only Command!`);
@@ -170,7 +133,7 @@ gmd({
             forwardingScore: 5,
             isForwarded: true,
             forwardedNewsletterMessageInfo: {
-              newsletterJid: "120363408839929349@newsletter",
+              newsletterJid: newsletterJid,
               newsletterName: botName,
               serverMessageId: 143
             },
@@ -193,7 +156,7 @@ gmd({
   category: "general",
   description: "Check bot response speed",
 }, async (from, Gifted, conText) => {
-      const { mek, react } = conText;
+      const { mek, react, newsletterJid, botName } = conText;
     const startTime = process.hrtime();
 
     await new Promise(resolve => setTimeout(resolve, Math.floor(80 + Math.random() * 420)));
@@ -207,7 +170,7 @@ gmd({
         forwardingScore: 5,
         isForwarded: true,
         forwardedNewsletterMessageInfo: {
-          newsletterJid: "120363408839929349@newsletter",
+          newsletterJid: newsletterJid,
           newsletterName: botName,
           serverMessageId: 143
         }
@@ -218,13 +181,18 @@ gmd({
 );
 
 
+
+
+
+
+
 gmd({ 
   pattern: "uptime", 
   react: "⏳",
   category: "general",
   description: "check bot uptime status.",
 }, async (from, Gifted, conText) => {
-      const { mek, react } = conText;
+      const { mek, react, newsletterJid, botName } = conText;
       
     const uptimeMs = Date.now() - BOT_START_TIME;
     
@@ -239,7 +207,7 @@ gmd({
         forwardingScore: 5,
         isForwarded: true,
         forwardedNewsletterMessageInfo: {
-          newsletterJid: "120363408839929349@newsletter",
+          newsletterJid: newsletterJid,
           newsletterName: botName,
           serverMessageId: 143
         }
@@ -256,12 +224,12 @@ gmd({
   category: "general",
   description: "Fetch bot script.",
 }, async (from, Gifted, conText) => {
-      const { mek, sender, react, pushName } = conText;
+      const { mek, sender, react, pushName, botPic, botName, ownerName, newsletterJid, giftedRepo } = conText;
 
-    const response = await axios.get(global.giftedApiRepo);
+    const response = await axios.get(`https://api.github.com/repos/${giftedRepo}`);
     const repoData = response.data;
     const { full_name, name, forks_count, stargazers_count, created_at, updated_at, owner } = repoData;
-    const messageText = `Hello *_${pushName}_,*\nThis is *Gifted-Md,* A Whatsapp Bot Built by *Gifted Tech,* Enhanced with Amazing Features to Make Your Whatsapp Communication and Interaction Experience Amazing\n\n*ʀᴇᴘᴏ ʟɪɴᴋ:* ${global.giftedRepo}\n\n*❲❒❳ ɴᴀᴍᴇ:* ${name}\n*❲❒❳ sᴛᴀʀs:* ${stargazers_count}\n*❲❒❳ ғᴏʀᴋs:* ${forks_count}\n*❲❒❳ ᴄʀᴇᴀᴛᴇᴅ ᴏɴ:* ${new Date(created_at).toLocaleDateString()}\n*❲❒❳ ʟᴀsᴛ ᴜᴘᴅᴀᴛᴇᴅ:* ${new Date(updated_at).toLocaleDateString()}\n*❲❒❳ ᴏᴡɴᴇʀ:* 𝑮𝒊𝒇𝒕𝒆𝒅 𝑻𝒆𝒄𝒉`;
+    const messageText = `Hello *_${pushName}_,*\nThis is *${botName},* A Whatsapp Bot Built by *${ownerName},* Enhanced with Amazing Features to Make Your Whatsapp Communication and Interaction Experience Amazing\n\n*ʀᴇᴘᴏ ʟɪɴᴋ:* https://github.com/${giftedRepo}\n\n*❲❒❳ ɴᴀᴍᴇ:* ${name}\n*❲❒❳ sᴛᴀʀs:* ${stargazers_count}\n*❲❒❳ ғᴏʀᴋs:* ${forks_count}\n*❲❒❳ ᴄʀᴇᴀᴛᴇᴅ ᴏɴ:* ${new Date(created_at).toLocaleDateString()}\n*❲❒❳ ʟᴀsᴛ ᴜᴘᴅᴀᴛᴇᴅ:* ${new Date(updated_at).toLocaleDateString()}`;
 
     const giftedMess = {
         image: { url: botPic },
@@ -271,7 +239,7 @@ gmd({
           forwardingScore: 5,
           isForwarded: true,
           forwardedNewsletterMessageInfo: {
-            newsletterJid: "120363408839929349@newsletter",
+            newsletterJid: newsletterJid,
             newsletterName: botName,
             serverMessageId: 143
           }
@@ -290,7 +258,7 @@ gmd({
   category: "tools",
   description: "Save messages (supports images, videos, audio, stickers, and text).",
 }, async (from, Gifted, conText) => {
-  const { mek, reply, react, isSuperUser } = conText;
+  const { mek, reply, react, sender, isSuperUser, getMediaBuffer } = conText;
   
   if (!isSuperUser) {
     return reply(`❌ Owner Only Command!`);
@@ -342,8 +310,7 @@ gmd({
       return reply(`❌ Unsupported message type.`);
     }
 
-    const ownerId = Gifted.user?.id || from; 
-    await Gifted.sendMessage(ownerId, mediaData, { quoted: mek });
+    await Gifted.sendMessage(sender, mediaData, { quoted: mek });
     // await reply(`✅ Saved Successfully!`);
     await react("✅");
 
@@ -353,16 +320,4 @@ gmd({
   }
 });
 
-async function getMediaBuffer(message, type) {
-  const stream = await downloadContentFromMessage(message, type);
-  let buffer = Buffer.from([]);
-  for await (const chunk of stream) {
-    buffer = Buffer.concat([buffer, chunk]);
-  }
-  return buffer;
-}
 
-
-global.giftedRepo = "https://github.com/mauricegift/gifted-md";
-global.giftedApiRepo = "https://api.github.com/repos/mauricegift/gifted-md";
-global.newsletterUrl = "https://whatsapp.com/channel/0029VajvUue0wak1mpi09q3t";

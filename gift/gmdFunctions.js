@@ -22,19 +22,107 @@ const sessionDir = path.join(__dirname, "session");
 const sessionPath = path.join(sessionDir, "creds.json");
 
 
-async function stickerToImage(webpData) {
+async function stickerToImage(webpData, options = {}) {
     try {
+        const {
+            upscale = true,
+            targetSize = 512, 
+	    framesToProcess = 200
+        } = options;
+
         if (Buffer.isBuffer(webpData)) {
-            const pngBuffer = await sharp(webpData)
-                .toFormat('png')
-                .toBuffer();
-            return pngBuffer;
+            const sharpInstance = sharp(webpData, {
+                sequentialRead: true,
+                animated: true,
+                limitInputPixels: false,
+                pages: framesToProcess 
+            });
+
+            const metadata = await sharpInstance.metadata();
+            const isAnimated = metadata.pages > 1 || metadata.hasAlpha;
+
+            if (isAnimated) {
+                return await sharpInstance
+                    .gif({
+                        compressionLevel: 0,
+                        quality: 100,
+                        effort: 1, 
+                        loop: 0 
+                    })
+                    .resize({
+                        width: upscale ? targetSize : metadata.width,
+                        height: upscale ? targetSize : metadata.height,
+                        fit: 'contain',
+                        background: { r: 0, g: 0, b: 0, alpha: 0 },
+                        kernel: 'lanczos3' 
+                    })
+                    .toBuffer();
+            } else {
+                return await sharpInstance
+                    .ensureAlpha()
+                    .resize({
+                        width: upscale ? targetSize : metadata.width,
+                        height: upscale ? targetSize : metadata.height,
+                        fit: 'contain',
+                        background: { r: 0, g: 0, b: 0, alpha: 0 },
+                        kernel: 'lanczos3'
+                    })
+                    .png({
+                        compressionLevel: 0,
+                        quality: 100,
+                        progressive: false,
+                        palette: true
+                    })
+                    .toBuffer();
+            }
         }
         else if (typeof webpData === 'string') {
-            const outputPath = webpData.replace('.webp', '.png');
-            await sharp(webpData)
-                .toFormat('png')
-                .toFile(outputPath);
+            const outputPath = webpData.replace(/\.webp$/, isAnimated ? '.gif' : '.png');
+            const sharpInstance = sharp(webpData, {
+                sequentialRead: true,
+                animated: true,
+                limitInputPixels: false,
+                pages: framesToProcess
+            });
+
+            const metadata = await sharpInstance.metadata();
+            const isAnimated = metadata.pages > 1 || metadata.hasAlpha;
+
+            if (isAnimated) {
+                await sharpInstance
+                    .gif({
+                        compressionLevel: 0,
+                        quality: 100,
+                        effort: 1,
+                        loop: 0
+                    })
+                    .resize({
+                        width: upscale ? targetSize : metadata.width,
+                        height: upscale ? targetSize : metadata.height,
+                        fit: 'contain',
+                        background: { r: 0, g: 0, b: 0, alpha: 0 },
+                        kernel: 'lanczos3'
+                    })
+                    .toFile(outputPath);
+            } else {
+                await sharpInstance
+                    .ensureAlpha()
+                    .resize({
+                        width: upscale ? targetSize : metadata.width,
+                        height: upscale ? targetSize : metadata.height,
+                        fit: 'contain',
+                        background: { r: 0, g: 0, b: 0, alpha: 0 },
+                        kernel: 'lanczos3'
+                    })
+                    .png({
+                        compressionLevel: 0,
+                        quality: 100,
+                        progressive: false,
+                        palette: true
+                    })
+                    .toFile(outputPath);
+            }
+
             const imageBuffer = await fs.promises.readFile(outputPath);
             await fs.promises.unlink(outputPath);
             await fs.promises.unlink(webpData); 
@@ -135,8 +223,16 @@ async function formatAudio(buffer) {
     
     ffmpeg()
       .input(tempInput)
+      .noVideo() 
       .audioCodec('libmp3lame')
       .audioBitrate(128)
+      .outputOptions([
+        '-preset ultrafast', 
+        '-compression_level 0', 
+        '-joint_stereo 1', 
+        '-reservoir 0', 
+        '-fflags +genpts', 
+      ])
       .toFormat('mp3')
       .on('error', (err) => {
         fs.unlinkSync(tempInput);
@@ -152,7 +248,6 @@ async function formatAudio(buffer) {
       .save(tempOutput);
   });
 }
-
 
 async function formatVideo(buffer) {
   return new Promise((resolve, reject) => {
@@ -241,7 +336,7 @@ async function loadSession() {
         }
 
         fs.writeFileSync(sessionPath, decompressedData, "utf8");
-        console.log("✅ ꜱᴇꜱꜱɪᴏɴ ʟᴏᴀᴅᴇᴅ");
+        console.log("✅ Session File Loaded");
 
     } catch (e) {
         console.error("❌ Session Error:", e.message);
@@ -298,7 +393,7 @@ const gmdBuffer = async (url, options = {}) => {
             },
             ...options,
             responseType: 'arraybuffer',
-            timeout: 240000 
+            timeout: 960000 
         });
         
         if (!res.data || res.data.length === 0) {

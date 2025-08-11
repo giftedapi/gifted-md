@@ -89,7 +89,7 @@ gmd({
     react: "🔄️",
     description: "Convert Sticker to Image.",
 }, async (from, Gifted, conText) => {
-    const { mek, reply, sender, botName, react, quoted, botFooter, quotedMsg } = conText;
+    const { mek, reply, sender, botName, react, quoted, botFooter, quotedMsg, newsletterJid } = conText;
 
     try {
         if (!quotedMsg) {
@@ -118,7 +118,7 @@ gmd({
             forwardingScore: 5,
             isForwarded: true,
             forwardedNewsletterMessageInfo: {
-              newsletterJid: "120363408839929349@newsletter",
+              newsletterJid: newsletterJid,
               newsletterName: botName,
               serverMessageId: 143
             },
@@ -146,7 +146,7 @@ gmd({
     description: "Convert video to audio"
   },
   async (from, Gifted, conText) => {
-    const { mek, reply, react, botPic, quoted, quotedMsg } = conText;
+    const { mek, reply, react, botPic, quoted, quotedMsg, newsletterUrl } = conText;
 
     if (!quotedMsg) {
       await react("❌");
@@ -174,7 +174,7 @@ gmd({
           body: 'Video to Audio',
           mediaType: 1,
           thumbnailUrl: botPic,
-          sourceUrl: "https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y",
+          sourceUrl: newsletterUrl,
           renderLargerThumbnail: false,
           showAdAttribution: true,
         }

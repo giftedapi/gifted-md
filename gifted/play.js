@@ -1,4 +1,42 @@
-const { gmd, gmdJson, gmdBuffer, formatVideo, formatAudio } = require("../gift");
+const { gmd } = require("../gift");
+
+
+
+gmd({
+    pattern: "sendimage",
+    aliases: ["sendimg", "dlimg", "dlimage"],
+    category: "downloader",
+    react: "📷",
+    description: "Download Audio from url"
+  },
+  async (from, Gifted, conText) => {
+    const { q, mek, reply, react, sender, botFooter, gmdBuffer } = conText;
+
+    if (!q) {
+      await react("❌");
+      return reply("Please provide image url");
+    }
+
+    try {
+      const buffer = await gmdBuffer(q);
+      if (buffer instanceof Error) {
+        await react("❌");
+        return reply("Failed to download the image file.");
+      }
+      await Gifted.sendMessage(from, {
+        image: imageBuffer,
+        mimetype: "image/jpg",
+        caption: `> *${botFooter}*`,
+      }, { quoted: mek });
+      await react("✅");
+    } catch (error) {
+      console.error("Error during download process:", error);
+      await react("❌");
+      return reply("Oops! Something went wrong. Please try again.");
+    }
+  }
+);
+
 
 gmd({
     pattern: "sendaudio",
@@ -8,7 +46,7 @@ gmd({
     description: "Download Audio from url"
   },
   async (from, Gifted, conText) => {
-    const { q, mek, reply, react, sender, botFooter } = conText;
+    const { q, mek, reply, react, sender, botFooter, gmdBuffer, formatAudio } = conText;
 
     if (!q) {
       await react("❌");
@@ -36,6 +74,7 @@ gmd({
   }
 );
 
+
 gmd({
     pattern: "sendvideo",
     aliases: ["sendmp4", "dlmp4", "dvideo"],
@@ -44,7 +83,7 @@ gmd({
     description: "Download Video from url"
   },
   async (from, Gifted, conText) => {
-    const { q, mek, reply, react, sender, botFooter } = conText;
+    const { q, mek, reply, react, sender, botFooter, gmdBuffer, formatVideo } = conText;
 
     if (!q) {
       await react("❌");
@@ -81,7 +120,7 @@ gmd({
     description: "Download Video from Youtube"
   },
   async (from, Gifted, conText) => {
-    const { q, mek, reply, react, sender, botPic, botName, botFooter } = conText;
+    const { q, mek, reply, react, sender, botPic, botName, botFooter, newsletterUrl, newsletterJid, gmdJson, gmdBuffer, formatAudio, GiftedTechApi, GiftedApiKey } = conText;
 
     if (!q) {
       await react("❌");
@@ -89,7 +128,7 @@ gmd({
     }
 
     try {
-      const searchResponse = await gmdJson(`https://yts.giftedtech.web.id/?q=${encodeURIComponent(q)}`);
+      const searchResponse = await gmdJson(`https://yts.giftedtech.co.ke/?q=${encodeURIComponent(q)}`);
 
       if (!searchResponse || !Array.isArray(searchResponse.videos)) {
         await react("❌");
@@ -103,15 +142,14 @@ gmd({
 
       const firstVideo = searchResponse.videos[0];
       const videoUrl = firstVideo.url;
-      const apiKey = '_0u5aff45,_0l1876s8qc';
       
       const audioApis = [
-        `https://api.giftedtech.web.id/api/download/ytmp3?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/yta?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/dlmp3?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/mp3?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/ytaudio?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/ytmusic?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`
+        `${GiftedTechApi}/api/download/ytmp3?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/yta?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/dlmp3?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/mp3?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/ytaudio?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/ytmusic?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`
       ];
 
       let downloadUrl = null;
@@ -158,7 +196,7 @@ gmd({
           forwardingScore: 5,
           isForwarded: true,
           forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363408839929349@newsletter',
+            newsletterJid: newsletterJid,
             newsletterName: botName,
             serverMessageId: 143
           }
@@ -189,7 +227,7 @@ gmd({
                   body: 'Youtube Downloader',
                   mediaType: 1,
                   thumbnailUrl: firstVideo.thumbnail || botPic,
-                  sourceUrl: "https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y",
+                  sourceUrl: newsletterUrl,
                   renderLargerThumbnail: false,
                   showAdAttribution: true,
                 },
@@ -245,7 +283,7 @@ gmd({
     description: "Download Video from Youtube"
   },
   async (from, Gifted, conText) => {
-    const { q, mek, reply, react, sender, botPic, botName, botFooter } = conText;
+    const { q, mek, reply, react, sender, botPic, botName, botFooter, newsletterUrl, newsletterJid, gmdJson, gmdBuffer, formatVideo, GiftedTechApi, GiftedApiKey } = conText;
 
     if (!q) {
       await react("❌");
@@ -253,7 +291,7 @@ gmd({
     }
 
     try {
-      const searchResponse = await gmdJson(`https://yts.giftedtech.web.id/?q=${encodeURIComponent(q)}`);
+      const searchResponse = await gmdJson(`https://yts.giftedtech.co.ke/?q=${encodeURIComponent(q)}`);
       
       if (!searchResponse || !Array.isArray(searchResponse.videos)) {
         await react("❌");
@@ -267,15 +305,14 @@ gmd({
       
       const firstVideo = searchResponse.videos[0];
       const videoUrl = firstVideo.url;
-      const apiKey = '_0u5aff45,_0l1876s8qc';
       
       const videoApis = [
-        `https://api.giftedtech.web.id/api/download/ytmp4?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/mp4?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/ytv?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/dlmp4?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/ytvideo?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`,
-        `https://api.giftedtech.web.id/api/download/ytvid?apikey=${apiKey}&url=${encodeURIComponent(videoUrl)}`
+        `${GiftedTechApi}/api/download/ytmp4?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/mp4?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/ytv?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/dlmp4?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/ytvideo?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`,
+        `${GiftedTechApi}/api/download/ytvid?apikey=${GiftedApiKey}&url=${encodeURIComponent(videoUrl)}`
       ];
 
       let downloadUrl = null;
@@ -322,7 +359,7 @@ gmd({
           forwardingScore: 5,
           isForwarded: true,
           forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363408839929349@newsletter',
+            newsletterJid: newsletterJid,
             newsletterName: botName,
             serverMessageId: 143
           }

@@ -17,12 +17,30 @@ const {
 const { 
     evt, 
     logger,
+    emojis,
     gmdStore,
     commands,
+    setSudo,
+    delSudo,
+    GiftedTechApi,
+    GiftedApiKey,
+    GiftedAutoReact,
     GiftedAntiLink,
     GiftedAutoBio,
     GiftedChatBot,
     loadSession,
+    getMediaBuffer,
+    getSudoNumbers,
+    getFileContentType,
+    bufferToStream,
+    uploadToPixhost,
+    uploadToImgBB,
+    gmdBuffer, gmdJson, 
+    formatAudio, formatVideo,
+    uploadToGithubCdn,
+    uploadToGiftedCdn,
+    uploadToPasteboard,
+    uploadToCatbox,
     GiftedAnticall,
     createContext, 
     createContext2,
@@ -65,6 +83,17 @@ const {
     ANTILINK: antiLink,
     ANTICALL: antiCall,
     TIME_ZONE: timeZone,
+    BOT_REPO: giftedRepo,
+    NEWSLETTER_JID: newsletterJid,
+    NEWSLETTER_URL: newsletterUrl,
+    AUTO_REACT: autoReact,
+    AUTO_READ_STATUS: autoReadStatus,
+    AUTO_LIKE_STATUS: autoLikeStatus,
+    STATUS_LIKE_EMOJIS: statusLikeEmojis,
+    AUTO_REPLY_STATUS: autoReplyStatus,
+    STATUS_REPLY_TEXT: statusReplyText,
+    AUTO_READ_MESSAGES: autoRead,
+    AUTO_BLOCK: autoBlock,
     AUTO_BIO: autoBio } = config;
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -149,6 +178,21 @@ async function startGifted() {
             }
         });
 
+        if (autoReact === "true") {
+            Gifted.ev.on('messages.upsert', async (mek) => {
+                ms = mek.messages[0];
+                try {
+                    if (ms.key.fromMe) return;
+                    if (!ms.key.fromMe && ms.message) {
+                        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+                        await GiftedAutoReact(randomEmoji, ms, Gifted);
+                    }
+                } catch (err) {
+                    console.error('Error during auto reaction:', err);
+                }
+            });
+        }
+
         const groupCooldowns = new Map();
 
         function isGroupSpamming(jid) {
@@ -160,47 +204,64 @@ async function startGifted() {
         }
         
         let giftech = { chats: {} };
-        const botJid = `${Gifted.user?.id.split(':')[0]}@s.whatsapp.net`;
-        const botOwnerJid = `${Gifted.user?.id.split(':')[0]}@s.whatsapp.net`;
+const botJid = `${Gifted.user?.id.split(':')[0]}@s.whatsapp.net`;
+const botOwnerJid = `${Gifted.user?.id.split(':')[0]}@s.whatsapp.net`;
 
-        Gifted.ev.on("messages.upsert", async ({ messages }) => {
-            try {
-                const ms = messages[0];
-                if (!ms?.message) return;
+Gifted.ev.on("messages.upsert", async ({ messages }) => {
+    try {
+        const ms = messages[0];
+        // console.log(ms); ///////////////////////////////////
+        if (!ms?.message) return;
 
-                const { key } = ms;
-                if (!key?.remoteJid) return;
-                if (key.fromMe) return;
-                if (key.remoteJid === 'status@broadcast') return;
+        const { key } = ms;
+        if (!key?.remoteJid) return;
+        if (key.fromMe) return;
+        if (key.remoteJid === 'status@broadcast') return;
 
-                const sender = key.pushName || key.participant || key.remoteJid;
-                if (sender === botJid || sender === botOwnerJid || key.fromMe) return;
+        const sender = key.senderPn || key.participantPn || key.participant || key.remoteJid;
+        const senderPushName = key.pushName || ms.pushName;
 
-                if (!giftech.chats[key.remoteJid]) giftech.chats[key.remoteJid] = [];
-                giftech.chats[key.remoteJid].push({
-                    ...ms,
-                    timestamp: Date.now()
-                });
-                if (giftech.chats[key.remoteJid].length > 50) {
-                    giftech.chats[key.remoteJid] = giftech.chats[key.remoteJid].slice(-50);
-                }
+        if (sender === botJid || sender === botOwnerJid || key.fromMe) return;
 
-                if (ms.message?.protocolMessage?.type === 0) {
-                    const deletedId = ms.message.protocolMessage.key.id;
-                    const deletedMsg = giftech.chats[key.remoteJid].find(m => m.key.id === deletedId);
-                    if (!deletedMsg?.message) return;
-
-                    const deleter = ms.key.pushName || ms.key.participant || ms.key.remoteJid;
-                    if (deleter === botJid || deleter === botOwnerJid) return;
-
-                    await GiftedAntiDelete(Gifted, deletedMsg, key, deleter, botOwnerJid);
-
-                    giftech.chats[key.remoteJid] = giftech.chats[key.remoteJid].filter(m => m.key.id !== deletedId);
-                }
-            } catch (error) {
-                logger.error('Anti-delete system error:', error);
-            }
+        if (!giftech.chats[key.remoteJid]) giftech.chats[key.remoteJid] = [];
+        giftech.chats[key.remoteJid].push({
+            ...ms,
+            originalSender: sender, 
+            originalPushName: senderPushName,
+            timestamp: Date.now()
         });
+
+        if (giftech.chats[key.remoteJid].length > 50) {
+            giftech.chats[key.remoteJid] = giftech.chats[key.remoteJid].slice(-50);
+        }
+
+        if (ms.message?.protocolMessage?.type === 0) {
+            const deletedId = ms.message.protocolMessage.key.id;
+            const deletedMsg = giftech.chats[key.remoteJid].find(m => m.key.id === deletedId);
+            if (!deletedMsg?.message) return;
+
+            const deleter = key.participantPn || key.participant || key.remoteJid;
+            const deleterPushName = key.pushName || ms.pushName;
+            
+            if (deleter === botJid || deleter === botOwnerJid) return;
+
+            await GiftedAntiDelete(
+                Gifted, 
+                deletedMsg, 
+                key, 
+                deleter, 
+                deletedMsg.originalSender, 
+                botOwnerJid,
+                deleterPushName,
+                deletedMsg.originalPushName
+            );
+
+            giftech.chats[key.remoteJid] = giftech.chats[key.remoteJid].filter(m => m.key.id !== deletedId);
+        }
+    } catch (error) {
+        logger.error('Anti-delete system error:', error);
+    }
+});
 
         if (autoBio === 'true') {
             setTimeout(() => GiftedAutoBio(Gifted), 1000);
@@ -211,16 +272,16 @@ async function startGifted() {
             await GiftedAnticall(json, Gifted);
         });
 
+        Gifted.ev.on("messages.upsert", async ({ messages }) => {
+            if (messages && messages.length > 0) {
+                await GiftedPresence(Gifted, messages[0].key.remoteJid);
+            }
+        });
+
         Gifted.ev.on("connection.update", ({ connection }) => {
             if (connection === "open") {
                 logger.info("Connection established - updating presence");
                 GiftedPresence(Gifted, "status@broadcast");
-            }
-        });
-
-        Gifted.ev.on("messages.upsert", async ({ messages }) => {
-            if (messages && messages.length > 0) {
-                await GiftedPresence(Gifted, messages[0].key.remoteJid);
             }
         });
 
@@ -237,57 +298,53 @@ async function startGifted() {
         });
 
         Gifted.ev.on('messages.upsert', async (mek) => {
-            try {
-                mek = mek.messages[0];
-                const fromJid = mek.key.participant || mek.key.remoteJid;
+      try {
+        mek = mek.messages[0];
+        if (!mek || !mek.message) return;
 
-                if (!mek || !mek.message) return;
+        const fromJid = mek.key.participant || mek.key.remoteJid;
+        mek.message = (getContentType(mek.message) === 'ephemeralMessage') 
+            ? mek.message.ephemeralMessage.message 
+            : mek.message;
 
-                mek.message = (getContentType(mek.message) === 'ephemeralMessage') 
-                    ? mek.message.ephemeralMessage.message 
-                    : mek.message;
+        if (mek.key && mek.key?.remoteJid === "status@broadcast" && isJidBroadcast(mek.key.remoteJid)) {
+            const giftedtech = jidNormalizedUser(Gifted.user.id);
 
-                if (mek.key && isJidBroadcast(mek.key.remoteJid)) {
-                    if (config.AUTO_READ_STATUS === "true" && mek.key) {
-                        const giftedtech = jidNormalizedUser(Gifted.user.id);
-                        await Gifted.readMessages([mek.key, giftedtech]);
-                    }
-
-                    if (config.AUTO_READ_STATUS === "true") {
-                        const giftedtech = jidNormalizedUser(Gifted.user.id);
-                        const emojis = config.STATUS_LIKE_EMOJIS.split(','); 
-                        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)]; 
-                        if (mek.key.remoteJid && mek.key.participant) {
-                            await Gifted.sendMessage(
-                                mek.key.remoteJid,
-                                { react: { key: mek.key, text: randomEmoji } },
-                                { statusJidList: [mek.key.participant, giftedtech] }
-                            );
-                        }
-                    }
-                
-                    if (config.AUTO_READ_STATUS === "true" && config.AUTO_REPLY_STATUS === "true") {
-                        const customMessage = config.STATUS_REPLY_TEXT || '✅ Status Viewed By Gifted-Md';
-                        if (mek.key.remoteJid) {
-                            await Gifted.sendMessage(
-                                fromJid,
-                                { text: customMessage },
-                                { quoted: mek }
-                            );
-                        }
-                    } 
-                }
-            } catch (error) {
-                console.error("Error Processing Actions:", error);
+            if (autoReadStatus === "true") {
+                await Gifted.readMessages([mek.key, giftedtech]);
             }
-        });
+
+            if (autoLikeStatus === "true" && mek.key.participant) {
+                const emojis = statusLikeEmojis?.split(',') || "💛,❤️,💜,🤍,💙"; 
+                const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)]; 
+                await Gifted.sendMessage(
+                    mek.key.remoteJid,
+                    { react: { key: mek.key, text: randomEmoji } },
+                    { statusJidList: [mek.key.participant, giftedtech] }
+                );
+            }
+
+            if (autoReplyStatus === "true") {
+                if (mek.key.fromMe) return;
+                const customMessage = statusReplyText || '✅ Status Viewed By Gifted-Md';
+                await Gifted.sendMessage(
+                    fromJid,
+                    { text: customMessage },
+                    { quoted: mek }
+                );
+            }
+        }
+    } catch (error) {
+        console.error("Error Processing Actions:", error);
+    }
+});
 
          try {
-            const taskflowPath = path.join(__dirname, "gifted");
-            fs.readdirSync(taskflowPath).forEach((fileName) => {
+            const pluginsPath = path.join(__dirname, "gifted");
+            fs.readdirSync(pluginsPath).forEach((fileName) => {
                 if (path.extname(fileName).toLowerCase() === ".js") {
                     try {
-                        require(path.join(taskflowPath, fileName));
+                        require(path.join(pluginsPath, fileName));
                     } catch (e) {
                         console.error(`❌ Failed to load ${fileName}: ${e.message}`);
                     }
@@ -297,7 +354,7 @@ async function startGifted() {
             console.error("❌ Error reading Taskflow folder:", error.message);
         }
 
-        console.log("✅ ᴘʟᴜɢɪɴꜱ ʟᴏᴀᴅᴇᴅ");
+        console.log("✅ Plugin Files Loaded");
 
         Gifted.ev.on("messages.upsert", async ({ messages }) => {
             const ms = messages[0];
@@ -327,11 +384,36 @@ async function startGifted() {
             let groupInfo = null;
             let groupName = '';
             try {
-                groupInfo = isGroup ? await Gifted.groupMetadata(from).catch(() => null) : null;
-                groupName = groupInfo?.subject || '';
-            } catch (err) {
-                console.error("Group metadata error:", err);
-            }
+            groupInfo = isGroup ? await Gifted.groupMetadata(from).catch(() => null) : null;
+               // console.log(groupInfo) //////////////////////////////////////////////////////
+groupName = groupInfo?.subject || '';
+} catch (err) {
+    console.error("Group metadata error:", err);
+}
+
+const sendr = ms.key.fromMe 
+                ? (Gifted.user.id.split(':')[0] + '@s.whatsapp.net' || Gifted.user.id) 
+                : (ms.key.participant || ms.key.remoteJid);
+let participants = [];
+let groupAdmins = [];
+let groupSuperAdmins = [];
+let sender = sendr;
+let isBotAdmin = false;
+let isAdmin = false;
+let isSuperAdmin = false;
+
+if (groupInfo && groupInfo.participants) {
+    participants = groupInfo.participants.map(p => p.pn || p.id);
+    groupAdmins = groupInfo.participants.filter(p => p.admin === 'admin').map(p => p.pn || p.id);
+    groupSuperAdmins = groupInfo.participants.filter(p => p.admin === 'superadmin').map(p => p.pn || p.id);
+    const senderLid = standardizeJid(sendr);
+    const founds = groupInfo.participants.find(p => p.id === senderLid || p.pn === senderLid);
+    sender = founds?.pn || founds?.id || sendr;
+    isBotAdmin = groupAdmins.includes(standardizeJid(botId)) || groupSuperAdmins.includes(standardizeJid(botId));
+    isAdmin = groupAdmins.includes(sender);
+    isSuperAdmin = groupSuperAdmins.includes(sender);
+}
+
             const repliedMessage = ms.message?.extendedTextMessage?.contextInfo?.quotedMessage || null;
             const type = getContentType(ms.message);
             const pushName = ms.pushName || 'Gifted-Md User';
@@ -347,9 +429,7 @@ async function startGifted() {
                 (type == 'videoMessage') && ms.message.videoMessage.caption ? ms.message.videoMessage.caption : '';
             const isCommand = body.startsWith(botPrefix);
             const command = isCommand ? body.slice(botPrefix.length).trim().split(' ').shift().toLowerCase() : '';
-            const sender = ms.key.fromMe 
-                ? (Gifted.user.id.split(':')[0] + '@s.whatsapp.net' || Gifted.user.id) 
-                : (ms.key.participant || ms.key.remoteJid);
+            
             const mentionedJid = (ms.message?.extendedTextMessage?.contextInfo?.mentionedJid || []).map(standardizeJid);
             const tagged = ms.mtype === "extendedTextMessage" && ms.message.extendedTextMessage.contextInfo != null
                 ? ms.message.extendedTextMessage.contextInfo.mentionedJid
@@ -367,34 +447,50 @@ async function startGifted() {
                 : repliedMessage 
                     ? repliedMessageAuthor 
                     : '';
+const devNumbers = ('254715206562,254114018035,254728782591,254799916673,254762016957,254113174209')
+    .split(',')
+    .map(num => num.trim().replace(/\D/g, '')) 
+    .filter(num => num.length > 5); 
 
-            const DEV_NUMBERS = '254715206562,254728782591,254762016957,254113174209';
-            const LID_NUMBERS = '196843149512733@lid,190881634250836@lid,102143516266581@lid';
+const sudoNumbersFromFile = getSudoNumbers() || [];
+const sudoNumbers = (config.SUDO_NUMBERS ? config.SUDO_NUMBERS.split(',') : [])
+    .map(num => num.trim().replace(/\D/g, ''))
+    .filter(num => num.length > 5);
 
-            const sudoNumbers = DEV_NUMBERS.split(',').map(num => num.trim());
-            const lidNumbers = LID_NUMBERS.split(',').map(lid => lid.trim());
+const botJid = standardizeJid(botId);
+const ownerJid = standardizeJid(ownerNumber.replace(/\D/g, ''));
+const superUser = [
+    ownerJid,
+    botJid,
+    ...(sudoNumbers || []).map(num => `${num}@s.whatsapp.net`),
+    ...(devNumbers || []).map(num => `${num}@s.whatsapp.net`),
+    ...(sudoNumbersFromFile || []).map(num => `${num}@s.whatsapp.net`)
+].map(jid => standardizeJid(jid)).filter(Boolean);
 
-            const botJid = standardizeJid(botId);
-            const ownerJid = standardizeJid(ownerNumber);
+const superUserSet = new Set(superUser);
+const finalSuperUsers = Array.from(superUserSet);
 
-            const superUser = [
-                ownerJid,
-                botJid,
-                ...sudoNumbers.map(num => standardizeJid(num)),
-                ...lidNumbers
-            ].filter(Boolean);
+const isSuperUser = finalSuperUsers.includes(sender);
+                            
 
-            const isSuperUser = superUser.includes(messageAuthor) || 
-                            (lidNumbers.includes(messageAuthor) && messageAuthor.endsWith('@lid'));
-            let isAdmin = false;
-            let botIsAdmin = false;
-            if (isGroup && groupInfo) {
-                const admins = groupInfo.participants
-                    .filter(p => p.admin)
-                    .map(p => standardizeJid(p.id));
-                isAdmin = admins.includes(standardizeJid(messageAuthor));
-                botIsAdmin = admins.includes(botJid);
+    if (autoBlock && sender && !isSuperUser && !isGroup) {
+    const countryCodes = autoBlock.split(',').map(code => code.trim());
+    if (countryCodes.some(code => sender.startsWith(code))) {
+        try {
+            await Gifted.updateBlockStatus(sender, 'block');
+        } catch (blockErr) {
+            console.error("Block error:", blockErr);
+            if (isSuperUser) {
+                await Gifted.sendMessage(ownerJid, { 
+                    text: `⚠️ Failed to block restricted user: ${sender}\nError: ${blockErr.message}`
+                });
             }
+        }
+    }
+}
+            if (autoRead === "true") await Gifted.readMessages([ms.key]);
+            if (autoRead === "commands" && isCommand) await Gifted.readMessages([ms.key]);
+            
 
             const text = ms.message?.conversation || 
                         ms.message?.extendedTextMessage?.text || 
@@ -418,20 +514,23 @@ async function startGifted() {
                     }
 
                     try {
-                        const reply = async (text, options = {}) => {
+                        const reply = (teks) => {
+  Gifted.sendMessage(from, { text: teks }, { quoted: ms });
+};
+                        /*const reply = async (text, options = {}) => {
                             if (typeof text !== 'string') return;
                             try {
                                 await Gifted.sendMessage(from, { 
                                     text,
-                                    ...createContext(messageAuthor, {
-                                        title: options.title || groupName || "GIFTED-MD",
+                                    ...createContext(sender, {
+                                        title: options.title || groupName || botName || "GIFTED-MD",
                                         body: options.body || ""
                                     })
                                 }, { quoted: ms });
                             } catch (err) {
                                 console.error("Reply error:", err);
                             }
-                        };
+                        };*/
 
                         const react = async (emoji) => {
                             if (typeof emoji !== 'string') return;
@@ -489,6 +588,19 @@ async function startGifted() {
                             }
                         }
 
+                        Gifted.getJidFromLid = async (lid) => {
+    const groupMetadata = await Gifted.groupMetadata(from);
+    const match = groupMetadata.participants.find(p => p.lid === lid || p.id === lid);
+    return match?.pn || null;
+};
+
+Gifted.getLidFromJid = async (jid) => {
+    const groupMetadata = await Gifted.groupMetadata(from);
+    const match = groupMetadata.participants.find(p => p.jid === jid || p.id === jid);
+    return match?.lid || null;
+};
+                           
+
                         let fileType;
                         (async () => {
                             fileType = await import('file-type');
@@ -544,23 +656,31 @@ async function startGifted() {
                             quoted,
                             isCmd: isCommand,
                             command,
+                            isAdmin,
+                            isBotAdmin,
                             sender,
                             pushName,
+                            setSudo,
+                            delSudo,
                             q: args.join(" "),
                             reply,
                             config,
                             superUser,
-                            isAdmin,
                             tagged,
                             mentionedJid,
-                            isBotAdmin: botIsAdmin,
                             isGroup,
                             groupInfo,
                             groupName,
+                            getSudoNumbers,
                             authorMessage: messageAuthor,
                             user: user || '',
+                            gmdBuffer, gmdJson, 
+                            formatAudio, formatVideo,
                             groupMember: isGroup ? messageAuthor : '',
                             from,
+                            tagged,
+                            groupAdmins,
+                            participants,
                             repliedMessage,
                             quotedMsg,
                             quotedUser,
@@ -573,6 +693,21 @@ async function startGifted() {
                             ownerNumber,
                             ownerName,
                             botName,
+                            giftedRepo,
+                            isSuperAdmin,
+                            getMediaBuffer,
+                            getFileContentType,
+                            bufferToStream,
+                            uploadToPixhost,
+                            uploadToImgBB,
+                            uploadToGithubCdn,
+                            uploadToGiftedCdn,
+                            uploadToPasteboard,
+                            uploadToCatbox,
+                            newsletterUrl,
+                            newsletterJid,
+                            GiftedTechApi,
+                            GiftedApiKey,
                             botPrefix,
                             timeZone };
 
@@ -594,24 +729,25 @@ async function startGifted() {
                     }
                 }
             }
+            
         });
 
         Gifted.ev.on("connection.update", async (update) => {
             const { connection, lastDisconnect } = update;
             
             if (connection === "connecting") {
-                console.log("ᴄᴏɴɴᴇᴄᴛɪɴɢ ɢɪꜰᴛᴇᴅ-ᴍᴅ...");
+                console.log("🕗 Connecting Bot...");
                 reconnectAttempts = 0;
             }
 
             if (connection === "open") {
-                console.log("✅ ʙᴏᴛ ɪꜱ ᴏɴʟɪɴᴇ");
+                console.log("✅ Connection Instance is Online");
                 reconnectAttempts = 0;
                 
                 setTimeout(async () => {
                     try {
                         const totalCommands = commands.filter((command) => command.pattern).length;
-                        console.log('💜 ᴄᴏɴɴᴇᴄᴛᴇᴅ ᴛᴏ ᴡʜᴀᴛꜱᴀᴘᴘ');
+                        console.log('💜 Connected to Whatsapp, Active!');
                             
                         if (startMess === 'true') {
                             const md = botMode === 'public' ? "public" : "private";
@@ -622,8 +758,8 @@ async function startGifted() {
 𝐏𝐥𝐮𝐠𝐢𝐧𝐬      : *${totalCommands.toString()}*
 𝐌𝐨𝐝𝐞        : *${md}*
 𝐎𝐰𝐧𝐞𝐫       : *${ownerNumber}*
-𝐓𝐮𝐭𝐨𝐫𝐢𝐚𝐥𝐬     : *youtube.com/@giftedtechnexus*
-𝐔𝐩𝐝𝐚𝐭𝐞𝐬      : *https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y*
+𝐓𝐮𝐭𝐨𝐫𝐢𝐚𝐥𝐬     : *${config.YT}*
+𝐔𝐩𝐝𝐚𝐭𝐞𝐬      : *${newsletterUrl}*
 
 > *${botCaption}*`;
 
@@ -638,7 +774,7 @@ async function startGifted() {
                                 },
                                 {
                                     disappearingMessagesInChat: true,
-                                    ephemeralExpiration: 600,
+                                    ephemeralExpiration: 300,
                                 }
                             );
                         }

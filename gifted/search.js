@@ -14,7 +14,7 @@ gmd({
     description: "Identify music from audio or video messages"
   },
   async (from, Gifted, conText) => {
-    const { mek, reply, react, botPic, quoted, quotedMsg, sender, botName, botFooter } = conText;
+    const { mek, reply, react, botPic, quoted, quotedMsg, sender, botName, botFooter, newsletterJid } = conText;
 
     if (!quotedMsg) {
       await react("❌");
@@ -79,7 +79,7 @@ gmd({
             forwardingScore: 5,
             isForwarded: true,
             forwardedNewsletterMessageInfo: {
-              newsletterJid: "120363408839929349@newsletter",
+              newsletterJid: newsletterJid,
               newsletterName: botName,
               serverMessageId: 143
             },

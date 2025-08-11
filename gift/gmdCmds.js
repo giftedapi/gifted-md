@@ -22,10 +22,15 @@ function gmd(obj, functions) {
     if (!obj.react) infoComs.react = "🚀";
     if (!obj.dontAddCommandList) infoComs.dontAddCommandList = false; 
     infoComs.function = functions;
+    
+    const stack = new Error().stack;
+    const filePath = stack.split('\n')[2].match(/\((.*):\d+:\d+\)/)[1];
+    infoComs.filename = filePath;
+    
     commands.push(infoComs);
     return infoComs;
 }
 
 module.exports = { gmd, commands, evt };
 
-evt.commands = commands;  // this was hell and it take me 3 hours to add since bot wasn't responding to commands after i had changed more bot structure logic
+evt.commands = commands;  // this was hell and it took me 3 hours to fix since bot wasn't responding to commands after i had changed more bot structure logic
